@@ -9,7 +9,7 @@ import java.util.concurrent.*;
 
 import static org.junit.Assert.assertEquals;
 
-public class SSDeepUT {
+public class SSDeepTestUT {
 
     @Test
     public void testSSDeepHashGeneration_Example1() throws IOException {
