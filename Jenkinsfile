@@ -163,7 +163,7 @@ pipeline {
                             // Remove the transient .m2 directory
                             sh(new DockerRunBuilder()
                                 .image(DOCKER_MAVEN_3_8_5)
-                                .setShellCommand('rm -fr /scan/?/.m2/ && rm -fr /app/.m2')
+                                .setShellCommand('rm -fr /app/?/.m2/ && rm -fr /app/.m2')
                                 .setZeroUser()
                                 .volume('${PWD}/', "/app/")
                                 .workdir("/app/")
