@@ -66,14 +66,19 @@ DOCKER_REGISTRY=${DOCKER_REGISTRY:-docker.io}
 DOCKER_MAVEN="${DOCKER_REGISTRY}/maven:3.9.9-amazoncorretto-11"
 
 # Run the build
-docker run --rm                        \
-  -i -t                                \
-  --workdir /tmp/app/                  \
-  --volume /tmp:/tmp                   \
-  --volume ~/.m2/:/tmp/.m2/            \
-  --user "$(id -u):$(id -g)"           \
-  --volume "${INCLUDES}/../:/tmp/app/"  \
-  -e MAVEN_CONFIG=/tmp/.m2             \
-  "${DOCKER_MAVEN}"                    \
-  sh -c 'mvn clean install -Dmaven.repo.local=/tmp/.m2/repository/ -Duser.home=/tmp'
+docker run                                                      \
+    --env MAVEN_CONFIG=/tmp/.m2                                 \
+    --interactive                                               \
+    --rm                                                        \
+    --tty                                                       \
+    --user "$(id -u):$(id -g)"                                  \
+    --volume /tmp:/tmp                                          \
+    --volume ~/.m2/:/tmp/.m2/                                   \
+    --volume "${INCLUDES}/../:/tmp/app/"                        \
+    --workdir /tmp/app/                                         \
+    "${DOCKER_MAVEN}"                                           \
+        sh -c 'mvn                                              \
+            clean install                                       \
+                --define maven.repo.local=/tmp/.m2/repository/  \
+                --define user.home=/tmp'
 
