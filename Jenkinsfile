@@ -25,8 +25,7 @@ pipeline {
 
         // Use docker images from our AWS ECR
         DOCKER_BASE_REPO = "https://130246223486.dkr.ecr.us-east-2.amazonaws.com"
-        DOCKER_CREDENTIALS = "ecr:us-east-2:brandontylkeawscreds"
-        DOCKER_MAVEN = "130246223486.dkr.ecr.us-east-2.amazonaws.com/maven:3.6.3-jdk-11"
+        DOCKER_MAVEN = "${DOCKER_BASE_REPO.replace('https://', '')}/maven:3.6.3-jdk-11"
         DOCKER_MAVEN_3_8_5 = "130246223486.dkr.ecr.us-east-2.amazonaws.com/maven:3.8.5-openjdk-17-slim"
 
         // Get Credentials for the Dogfood Environment
@@ -54,35 +53,67 @@ pipeline {
            }
         }
 
+        stage('ECR Authentication') {
+            // NOTE: All Docker images pulled for this repo are from AWS ECR or dogfood.app.codelogic.com
+            // We authenticate once with ECR at the start of the pipeline (ECR tokens are valid for 12 hours).
+            // If Docker Hub (docker.io) pulls are needed in the future, they should be added using
+            // docker.withRegistry() blocks with Docker Hub credentials. Docker stores credentials per registry,
+            // so adding docker.withRegistry() for docker.io will NOT negate our AWS ECR authentication.
+            steps {
+                script {
+                    echo "Authenticating with AWS ECR..."
+
+                    // Authenticate with ECR using AWS credentials from Jenkins
+                    withCredentials([
+                        [$class: 'AmazonWebServicesCredentialsBinding',
+                         credentialsId: 'brandontylkeawscreds',
+                         accessKeyVariable: 'AWS_ACCESS_KEY_ID',
+                         secretKeyVariable: 'AWS_SECRET_ACCESS_KEY']
+                    ]) {
+                        sh('''
+                            export AWS_REGION="us-east-2"
+                            export AWS_DEFAULT_REGION="us-east-2"
+
+                            # Strip https:// prefix from DOCKER_BASE_REPO to get registry URL
+                            ECR_REGISTRY="${DOCKER_BASE_REPO##https://}"
+
+                            # Authenticate Docker with ECR (token valid for 12 hours)
+                            if aws ecr get-login-password --region us-east-2 | docker login --username AWS --password-stdin "${ECR_REGISTRY}"; then
+                                echo "✓ Successfully authenticated Docker with ECR"
+                            else
+                                echo "✗ Failed to authenticate Docker with ECR"
+                                exit 1
+                            fi
+                        ''')
+                    }
+                }
+            }
+        }
+
         stage('Build Branch and Run UTs') {
             when {
                 expression { BRANCH_NAME ==~ /(integration|qa|master|feature\/.*)/ }
             }
             steps {
-                script {
-                    docker.withRegistry(DOCKER_BASE_REPO, DOCKER_CREDENTIALS) {
-                        // Maven steps
-                        sh('''
-                            docker run                                                 \
-                                --env "ARTIFACTORY_CREDS_PSW=${ARTIFACTORY_CREDS_PSW}" \
-                                --env "ARTIFACTORY_CREDS_USR=${ARTIFACTORY_CREDS_USR}" \
-                                --memory="8g"                                          \
-                                --rm                                                   \
-                                --user "$(id -u):$(id -g)"                             \
-                                --volume "${PWD}:/app/"                                \
-                                --workdir /app/                                        \
-                                "${DOCKER_MAVEN}"                                      \
-                                    sh -c 'mvn                                         \
-                                        --settings settings-override.xml               \
-                                        clean validate install                         \
-                                            --define format=xml                        \
-                                            --define outputDirectory=target            \
-                                            --define scanpath=target                   \
-                                            --define skipDependencyCheck=false         \
-                                            --define skipSpotbugs=false'
-                        ''')
-                    }
-                }
+                sh('''
+                    docker run                                                 \
+                        --env "ARTIFACTORY_CREDS_PSW=${ARTIFACTORY_CREDS_PSW}" \
+                        --env "ARTIFACTORY_CREDS_USR=${ARTIFACTORY_CREDS_USR}" \
+                        --memory="8g"                                          \
+                        --rm                                                   \
+                        --user "$(id -u):$(id -g)"                             \
+                        --volume "${PWD}:/app/"                                \
+                        --workdir /app/                                        \
+                        "${DOCKER_MAVEN}"                                      \
+                            sh -c 'mvn                                         \
+                                --settings settings-override.xml               \
+                                clean validate install                         \
+                                    --define format=xml                        \
+                                    --define outputDirectory=target            \
+                                    --define scanpath=target                   \
+                                    --define skipDependencyCheck=false         \
+                                    --define skipSpotbugs=false'
+                ''')
             }
         }
 
@@ -109,26 +140,21 @@ pipeline {
                 expression { BRANCH_NAME ==~ /(qa|master)/ }
             }
             steps {
-                script {
-                    docker.withRegistry(DOCKER_BASE_REPO, DOCKER_CREDENTIALS) {
-                        // Publish Artifacts to Artifactory
-                        sh('''
-                            docker run                                                 \
-                                --env "ARTIFACTORY_CREDS_PSW=${ARTIFACTORY_CREDS_PSW}" \
-                                --env "ARTIFACTORY_CREDS_USR=${ARTIFACTORY_CREDS_USR}" \
-                                --rm                                                   \
-                                --user "$(id -u):$(id -g)"                             \
-                                --volume "${PWD}:/app/"                                \
-                                --workdir /app/                                        \
-                                "${DOCKER_MAVEN}"                                      \
-                                    sh -c 'mvn                                         \
-                                        --settings settings-override.xml               \
-                                        deploy                                         \
-                                            --define skipDependencyCheck=true          \
-                                            --define skipSpotbugs=true'
-                        ''')
-                    }
-                }
+                sh('''
+                    docker run                                                 \
+                        --env "ARTIFACTORY_CREDS_PSW=${ARTIFACTORY_CREDS_PSW}" \
+                        --env "ARTIFACTORY_CREDS_USR=${ARTIFACTORY_CREDS_USR}" \
+                        --rm                                                   \
+                        --user "$(id -u):$(id -g)"                             \
+                        --volume "${PWD}:/app/"                                \
+                        --workdir /app/                                        \
+                        "${DOCKER_MAVEN}"                                      \
+                            sh -c 'mvn                                         \
+                                --settings settings-override.xml               \
+                                deploy                                         \
+                                    --define skipDependencyCheck=true          \
+                                    --define skipSpotbugs=true'
+                ''')
             }
         }
 
@@ -159,16 +185,14 @@ pipeline {
             steps {
                 catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
                     script {
-                        docker.withRegistry(DOCKER_BASE_REPO, DOCKER_CREDENTIALS) {
-                            // Remove the transient .m2 directory
-                            sh(new DockerRunBuilder()
-                                .image(DOCKER_MAVEN_3_8_5)
-                                .setShellCommand('rm -fr /app/?/.m2/ || true && rm -fr /app/.m2')
-                                .setZeroUser()
-                                .volume('${PWD}/', "/app/")
-                                .workdir("/app/")
-                                .buildCommand())
-                        }
+                        // Remove the transient .m2 directory
+                        sh(new DockerRunBuilder()
+                            .image(DOCKER_MAVEN_3_8_5)
+                            .setShellCommand('rm -fr /app/?/.m2/ || true && rm -fr /app/.m2')
+                            .setZeroUser()
+                            .volume('${PWD}/', "/app/")
+                            .workdir("/app/")
+                            .buildCommand())
                     }
                     // Publish CodeLogic Scan to Dogfood
                     sh('''
@@ -215,3 +239,4 @@ pipeline {
         }
     }
 }
+
