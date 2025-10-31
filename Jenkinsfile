@@ -1,4 +1,4 @@
-@Library("jenkins-common@1.3.9") _
+@Library('jenkins-common@1.3.9') _
 
 import com.codelogic.jenkins.common.DockerRunBuilder
 
@@ -13,13 +13,11 @@ pipeline {
         // This fixes the issue where builds are prevented due to "Suppress automatic SCM triggering" being enabled by Jenkins
         overrideIndexTriggers(true)
 
-        timestamps()
         timeout(time: 1, unit: 'HOURS')
+        timestamps()
     }
 
     environment {
-        SECONDS_SINCE_EPOCH = sh(script: 'date -u +%s', returnStdout: true).trim()
-
         // Get Jenkins Artifactory Credentials
         ARTIFACTORY_CREDS = credentials('JenkinsArtifactory')
 
@@ -30,6 +28,8 @@ pipeline {
 
         // Get Credentials for the Dogfood Environment
         DOGFOOD_CREDS_EKS = credentials("CodeLogicDogfoodKubernetesEKS")
+
+        SECONDS_SINCE_EPOCH = sh(script: 'date -u +%s', returnStdout: true).trim()
     }
 
     stages {
@@ -41,7 +41,7 @@ pipeline {
                 }
             }
             steps {
-                sh 'exit 1'
+                sh('exit 1')
             }
         }
 
