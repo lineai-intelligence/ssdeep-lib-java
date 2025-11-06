@@ -158,10 +158,9 @@
                         </execution>
                     </executions>
                     <configuration>
-                        <skip>${skipDependencyCheck}</skip>
-                        <suppressionFile>owasp-suppressions.xml</suppressionFile>
-                        <failBuildOnCVSS>8</failBuildOnCVSS>
-                        <failOnError>false</failOnError>
+                        <skip>true</skip>
+                        <!-- Dependency-Check is disabled due to NVD API 403 errors -->
+                        <!-- Renovate handles dependency scanning functionality -->
                         <centralAnalyzerEnabled>false</centralAnalyzerEnabled>
                         <nexusAnalyzerEnabled>false</nexusAnalyzerEnabled>
                         <pyDistributionAnalyzerEnabled>false</pyDistributionAnalyzerEnabled>
