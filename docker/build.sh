@@ -81,4 +81,3 @@ docker run                                                      \
             clean install                                       \
                 --define maven.repo.local=/tmp/.m2/repository/  \
                 --define user.home=/tmp'
-
