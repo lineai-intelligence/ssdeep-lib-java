@@ -29,7 +29,7 @@ pipeline {
         // Get Credentials for the Dogfood Environment
         DOGFOOD_CREDS_EKS = credentials("CodeLogicDogfoodKubernetesEKS")
 
-        ECR_CREDENTIALS_ID = 'ecr:us-east-2:brandontylkeawscreds'
+        ECR_CREDENTIALS_ID = 'ecr:us-east-2:jenkins-cicd-aws-keys'
 
         SECONDS_SINCE_EPOCH = sh(script: 'date -u +%s', returnStdout: true).trim()
     }
