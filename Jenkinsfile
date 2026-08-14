@@ -1,6 +1,6 @@
-@Library('jenkins-common@1.3.9') _
+@Library('jenkins-common@1.7.0') _
 
-import com.codelogic.jenkins.common.DockerRunBuilder
+import net.lineai.jenkins.common.DockerRunBuilder
 
 pipeline {
     // Run only on agent where Docker is installed
