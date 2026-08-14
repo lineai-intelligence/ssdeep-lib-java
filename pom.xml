@@ -252,18 +252,14 @@
 
     <distributionManagement>
         <repository>
-            <uniqueVersion>true</uniqueVersion>
-            <id>central</id>
-            <name>libs-release</name>
-            <url>https://panopticops.jfrog.io/artifactory/libs-release-local</url>
-            <layout>default</layout>
+            <id>github</id>
+            <name>GitHub Packages</name>
+            <url>https://maven.pkg.github.com/lineai-intelligence/ssdeep-lib-java</url>
         </repository>
         <snapshotRepository>
-            <uniqueVersion>false</uniqueVersion>
-            <id>snapshots</id>
-            <name>libs-snapshots</name>
-            <url>https://panopticops.jfrog.io/artifactory/libs-snapshot-local</url>
-            <layout>default</layout>
+            <id>github</id>
+            <name>GitHub Packages</name>
+            <url>https://maven.pkg.github.com/lineai-intelligence/ssdeep-lib-java</url>
         </snapshotRepository>
     </distributionManagement>
 </project>
