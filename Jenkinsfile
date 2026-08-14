@@ -56,7 +56,7 @@ pipeline {
         }
 
         stage('ECR Authentication') {
-            // NOTE: All Docker images pulled for this repo are from AWS ECR or dogfood.app.codelogic.com
+            // NOTE: All Docker images pulled for this repo are from AWS ECR or dogfood.app.lineai.net
             // We authenticate once with ECR at the start of the pipeline (ECR tokens are valid for 12 hours).
             // If Docker Hub (docker.io) pulls are needed in the future, they should be added using
             // docker.withRegistry() blocks with Docker Hub credentials. Docker stores credentials per registry,
@@ -204,14 +204,14 @@ pipeline {
                         docker run                                                        \
                             --env AGENT_PASSWORD="${DOGFOOD_CREDS_EKS_PSW}"               \
                             --env AGENT_UUID="${DOGFOOD_CREDS_EKS_USR}"                   \
-                            --env CODELOGIC_HOST="https://dogfood.app.codelogic.com"      \
+                            --env CODELOGIC_HOST="https://dogfood.app.lineai.net"      \
                             --env MAVEN_PUBLISH_VERSION="${MAVEN_PUBLISH_VERSION}"        \
                             --env SCAN_SPACE_NAME="${SCAN_SPACE_NAME}"                    \
                             --interactive                                                 \
                             --pull always                                                 \
                             --rm                                                          \
                             --volume "${PWD}:/scan"                                       \
-                            dogfood.app.codelogic.com/codelogic_java:latest analyze       \
+                            dogfood.app.lineai.net/codelogic_java:latest analyze       \
                                 --application "ssdeep-lib-java-${MAVEN_PUBLISH_VERSION}"  \
                                 --expunge-scan-sessions                                   \
                                 --method-filter com.codelogic.                            \
