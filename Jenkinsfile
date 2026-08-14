@@ -19,7 +19,7 @@ pipeline {
 
     environment {
         // Get Jenkins Artifactory Credentials
-        ARTIFACTORY_CREDS = credentials('JenkinsArtifactory')
+        GITHUB_CREDS = credentials('jenkins-github-pat-password')
 
         // Use docker images from our AWS ECR
         DOCKER_BASE_REPO = "https://130246223486.dkr.ecr.us-east-2.amazonaws.com"
@@ -100,8 +100,8 @@ pipeline {
                 sh('''
                     docker pull "${DOCKER_MAVEN}"
                     docker run                                                 \
-                        --env ARTIFACTORY_CREDS_PSW="${ARTIFACTORY_CREDS_PSW}" \
-                        --env ARTIFACTORY_CREDS_USR="${ARTIFACTORY_CREDS_USR}" \
+                        --env GITHUB_CREDS_PSW="${GITHUB_CREDS_PSW}" \
+                        --env GITHUB_CREDS_USR="${GITHUB_CREDS_USR}" \
                         --memory="8g"                                          \
                         --rm                                                   \
                         --user "$(id -u):$(id -g)"                             \
@@ -146,8 +146,8 @@ pipeline {
                 sh('''
                     docker pull "${DOCKER_MAVEN}"
                     docker run                                                 \
-                        --env ARTIFACTORY_CREDS_PSW="${ARTIFACTORY_CREDS_PSW}" \
-                        --env ARTIFACTORY_CREDS_USR="${ARTIFACTORY_CREDS_USR}" \
+                        --env GITHUB_CREDS_PSW="${GITHUB_CREDS_PSW}" \
+                        --env GITHUB_CREDS_USR="${GITHUB_CREDS_USR}" \
                         --rm                                                   \
                         --user "$(id -u):$(id -g)"                             \
                         --volume "${PWD}:/app/"                                \

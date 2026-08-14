@@ -4,54 +4,55 @@
   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <servers>
     <server>
-      <username>${env.ARTIFACTORY_CREDS_USR}</username>
-      <password>${env.ARTIFACTORY_CREDS_PSW}</password>
-      <id>central</id>
-    </server>
-    <server>
-      <username>${env.ARTIFACTORY_CREDS_USR}</username>
-      <password>${env.ARTIFACTORY_CREDS_PSW}</password>
-      <id>snapshots</id>
+      <id>github</id>
+      <username>${env.GITHUB_CREDS_USR}</username>
+      <password>${env.GITHUB_CREDS_PSW}</password>
     </server>
   </servers>
   <profiles>
     <profile>
-      <id>artifactory</id>
+      <id>github</id>
       <repositories>
         <repository>
+          <id>central</id>
+          <name>Maven Central</name>
+          <url>https://repo.maven.apache.org/maven2</url>
           <snapshots>
             <enabled>false</enabled>
           </snapshots>
-          <id>central</id>
-          <name>libs-release</name>
-          <url>https://panopticops.jfrog.io/artifactory/libs-release</url>
         </repository>
         <repository>
-          <snapshots/>
-          <id>snapshots</id>
-          <name>libs-snapshot</name>
-          <url>https://panopticops.jfrog.io/artifactory/libs-snapshot</url>
+          <id>github</id>
+          <name>GitHub Packages</name>
+          <url>https://maven.pkg.github.com/lineai-intelligence/*</url>
+          <snapshots>
+            <enabled>true</enabled>
+            <updatePolicy>always</updatePolicy>
+          </snapshots>
         </repository>
       </repositories>
       <pluginRepositories>
         <pluginRepository>
+          <id>central</id>
+          <name>Maven Central</name>
+          <url>https://repo.maven.apache.org/maven2</url>
           <snapshots>
             <enabled>false</enabled>
           </snapshots>
-          <id>central</id>
-          <name>libs-release</name>
-          <url>https://panopticops.jfrog.io/artifactory/libs-release</url>
         </pluginRepository>
         <pluginRepository>
-          <snapshots/>
-          <id>snapshots</id>
-          <name>libs-snapshot</name>
-          <url>https://panopticops.jfrog.io/artifactory/libs-snapshot</url>
+          <id>github</id>
+          <name>GitHub Packages</name>
+          <url>https://maven.pkg.github.com/lineai-intelligence/*</url>
+          <snapshots>
+            <enabled>true</enabled>
+            <updatePolicy>always</updatePolicy>
+          </snapshots>
         </pluginRepository>
       </pluginRepositories>
     </profile>
   </profiles>
   <activeProfiles>
-    <activeProfile>artifactory</activeProfile>
+    <activeProfile>github</activeProfile>
   </activeProfiles>
 </settings>
