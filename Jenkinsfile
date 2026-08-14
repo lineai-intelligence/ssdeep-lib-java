@@ -157,7 +157,11 @@ pipeline {
                                 --settings settings-override.xml               \
                                 deploy                                         \
                                     --define skipDependencyCheck=true          \
-                                    --define skipSpotbugs=true'
+                                    --define skipSpotbugs=true                 \
+                                > /tmp/deploy.log 2>&1; rc=$?; cat /tmp/deploy.log; \
+                                if [ $rc -ne 0 ] && grep -q "409 Conflict" /tmp/deploy.log; then \
+                                    echo "Version already in GitHub Packages (409): treating as published (GH forbids overwrite; Artifactory allowed it)"; exit 0; \
+                                fi; exit $rc'
                 ''')
             }
         }
