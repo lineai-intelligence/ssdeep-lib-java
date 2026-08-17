@@ -230,14 +230,38 @@ pipeline {
 
     // Post pipeline actions
     post {
+        // TEST — REMOVE BEFORE MERGE (LIN-470 canary): one gratuitous success
+        // card to prove the Jenkins→Teams path end to end.
+        success {
+            script {
+                def card = [
+                    type       : 'message',
+                    attachments: [[
+                        contentType: 'application/vnd.microsoft.card.adaptive',
+                        content    : [
+                            '$schema': 'http://adaptivecards.io/schemas/adaptive-card.json',
+                            type     : 'AdaptiveCard',
+                            version  : '1.4',
+                            body     : [[type: 'TextBlock', wrap: true,
+                             text: "🧪 This gratuitous message confirms that ssdeep-lib-java on ${env.BRANCH_NAME} succeeded in Jenkins and reached Teams. Ignore, it's just a test. (LIN-470 canary)"]],
+                        ],
+                    ]],
+                ]
+                writeFile(file: '.teams-test.json', text: groovy.json.JsonOutput.toJson(card))
+                withCredentials([string(credentialsId: 'teams-webhook', variable: 'TEAMS_WEBHOOK')]) {
+                    sh 'curl -sS -o /dev/null -X POST -H "Content-Type: application/json" -d @.teams-test.json "$TEAMS_WEBHOOK"'
+                }
+                sh 'rm -f .teams-test.json'
+            }
+        }
         unstable {
             script {
-                sendSlackFailure()
+                sendTeamsFailure()
             }
         }
         failure {
             script {
-                sendSlackFailure()
+                sendTeamsFailure()
             }
         }
 
