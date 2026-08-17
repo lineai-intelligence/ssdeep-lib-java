@@ -132,8 +132,8 @@ pipeline {
                 // Publish JUnit test result report
                 junit "**/surefire-reports/*TestUT.xml"
 
-                // Publish JaCoCo coverage reports
-                step([$class: 'JacocoPublisher'])
+                // Publish coverage (JaCoCo XML via the Coverage plugin — LIN-469)
+                recordCoverage(tools: [[parser: 'JACOCO']])
 
             }
         }
