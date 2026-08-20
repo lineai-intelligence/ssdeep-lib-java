@@ -1,4 +1,4 @@
-@Library('jenkins-common@1.7.0') _
+@Library('jenkins-common@1.8.2') _
 
 import net.lineai.jenkins.common.DockerRunBuilder
 
@@ -232,12 +232,12 @@ pipeline {
     post {
         unstable {
             script {
-                sendSlackFailure()
+                sendTeamsFailure()
             }
         }
         failure {
             script {
-                sendSlackFailure()
+                sendTeamsFailure()
             }
         }
 
