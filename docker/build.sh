@@ -29,9 +29,9 @@ ENVIRONMENT VARIABLES:
                      Use ECR registry (130246223486.dkr.ecr.us-east-2.amazonaws.com)
                      to pull from AWS ECR instead of Docker Hub
                      
-NOTE: This script uses maven:3.9.9-amazoncorretto-11. If using ECR, ensure this
-      specific version is available in ECR, or update DOCKER_MAVEN to use a
-      version available in ECR (e.g., maven:3.8.5-openjdk-17-slim).
+NOTE: This script uses maven:3.6.3-jdk-11 — deliberately the same image the
+      Jenkinsfile's build uses (DOCKER_MAVEN), so local and CI builds behave
+      identically. If you change one, change the other.
 
 EXAMPLES:
     $0                                              # Build using Docker Hub
@@ -63,7 +63,7 @@ fi
 
 # Default to Docker Hub for local builds unless explicitly set
 DOCKER_REGISTRY=${DOCKER_REGISTRY:-docker.io}
-DOCKER_MAVEN="${DOCKER_REGISTRY}/maven:3.9.9-amazoncorretto-11"
+DOCKER_MAVEN="${DOCKER_REGISTRY}/maven:3.6.3-jdk-11"
 
 # Run the build
 docker run                                                      \
