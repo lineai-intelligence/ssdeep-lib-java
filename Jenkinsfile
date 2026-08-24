@@ -1,4 +1,4 @@
-@Library('jenkins-common@1.8.2') _
+@Library('jenkins-common') _
 
 import net.lineai.jenkins.common.DockerRunBuilder
 
