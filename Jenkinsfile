@@ -32,6 +32,9 @@ pipeline {
         ECR_CREDENTIALS_ID = 'ecr:us-east-2:jenkins-cicd-aws-keys'
 
         SECONDS_SINCE_EPOCH = sh(script: 'date -u +%s', returnStdout: true).trim()
+
+        // lineai-intelligence-build-feedback / lineai-intelligence-source-scan
+        LINEAI_HOST = 'https://dogfood.app.lineai.net'
     }
 
     stages {
@@ -39,7 +42,7 @@ pipeline {
         stage('Check Branch') {
             when {
                 not {
-                    expression { BRANCH_NAME ==~ /(integration|qa|master|feature\/.*)/ }
+                    expression { BRANCH_NAME ==~ /(integration|qa|master|feature\/.*|lineai\/.*)/ }
                 }
             }
             steps {
@@ -94,10 +97,13 @@ pipeline {
 
         stage('Build Branch and Run UTs') {
             when {
-                expression { BRANCH_NAME ==~ /(integration|qa|master|feature\/.*)/ }
+                expression { BRANCH_NAME ==~ /(integration|qa|master|feature\/.*|lineai\/.*)/ }
             }
             steps {
+                // lineai-intelligence-build-feedback: tee build/test output so it can be sent to Lineai in post{always}
                 sh('''
+                    set -o pipefail
+                    export NO_COLOR=1 TERM=dumb
                     docker pull "${DOCKER_MAVEN}"
                     docker run                                                 \
                         --env GITHUB_CREDS_PSW="${GITHUB_CREDS_PSW}" \
@@ -115,14 +121,14 @@ pipeline {
                                     --define outputDirectory=target            \
                                     --define scanpath=target                   \
                                     --define skipDependencyCheck=false         \
-                                    --define skipSpotbugs=false'
+                                    --define skipSpotbugs=false' 2>&1 | tee "${WORKSPACE}/build.log"
                 ''')
             }
         }
 
         stage('Record Test Results') {
             when {
-                expression { BRANCH_NAME ==~ /(integration|qa|master|feature\/.*)/ }
+                expression { BRANCH_NAME ==~ /(integration|qa|master|feature\/.*|lineai\/.*)/ }
             }
             steps {
                 // Publish SpotBugs analysis results
@@ -226,6 +232,41 @@ pipeline {
                 }
             }
         }
+
+        stage('Lineai Source Scan') {
+            // lineai-intelligence-source-scan — same org-wide credentials as build feedback
+            when {
+                expression { BRANCH_NAME ==~ /(integration|lineai\/.*)/ }
+            }
+            steps {
+                catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
+                    withCredentials([
+                        string(credentialsId: 'lineai-build-feedback-agent-uuid', variable: 'AGENT_UUID'),
+                        string(credentialsId: 'lineai-build-feedback-agent-password', variable: 'AGENT_PASSWORD')
+                    ]) {
+                        sh '''
+                            docker run --pull always --rm \
+                                --env LINEAI_HOST --env AGENT_UUID --env AGENT_PASSWORD \
+                                --env SCAN_PATH_FILTER=java --env SCAN_PATH_DEPTH=-1 \
+                                -v "${WORKSPACE}:/scan" \
+                                --entrypoint /bin/bash \
+                                lineaipublic.azurecr.io/lineai_source_java:latest \
+                                -c 'set -euo pipefail
+                                    printf "%s\n" "${AGENT_UUID}" > /sourceCape-agent-uuid
+                                    printf "%s\n" "${AGENT_UUID}" > /sourceCape-agent-creds
+                                    printf "%s\n" "${AGENT_PASSWORD}" >> /sourceCape-agent-creds
+                                    printf "%s\n" "${AGENT_UUID}" > /jCape-agent-uuid
+                                    printf "%s\n" "${AGENT_UUID}" > /jCape-agent-creds
+                                    printf "%s\n" "${AGENT_PASSWORD}" >> /jCape-agent-creds
+                                    exec /opt/entrypoint.sh analyze --type FILE \
+                                        --application "ssdeep-lib-java" \
+                                        --scan-space-name "https://github.com/lineai-intelligence/ssdeep-lib-java|OnboardingBaselineScanSpace" \
+                                        --path /scan --method-filter "com.codelogic." --rescan'
+                        '''
+                    }
+                }
+            }
+        }
     }
 
     // Post pipeline actions
@@ -243,6 +284,40 @@ pipeline {
 
         // Always perform this code, even if the pipeline stages fail
         always {
+            // lineai-intelligence-build-feedback — org-wide credentials: see PR comment (Jenkins example)
+            // Patch existing build steps like this (do not curl consoleText / rawBuild):
+            //   sh '''
+            //     set -o pipefail
+            //     export NO_COLOR=1 TERM=dumb
+            //     <existing-build-command> 2>&1 | tee "${WORKSPACE}/build.log"
+            //   '''
+            script {
+                env.LINEAI_BUILD_STATUS = "${currentBuild.currentResult}"
+            }
+            withCredentials([
+                string(credentialsId: 'lineai-build-feedback-agent-uuid', variable: 'AGENT_UUID'),
+                string(credentialsId: 'lineai-build-feedback-agent-password', variable: 'AGENT_PASSWORD')
+            ]) {
+                sh '''
+                    if [ ! -f "${WORKSPACE}/build.log" ]; then
+                        echo "No teed build.log found; build may have failed before log capture." > "${WORKSPACE}/build.log"
+                    fi
+                    docker run --pull always --rm \
+                        -v "${WORKSPACE}:/scan" \
+                        -v "${WORKSPACE}:/log_file_path" \
+                        lineaipublic.azurecr.io/lineai_send-build-info:latest \
+                        send_build_info \
+                        --server="${LINEAI_HOST}" \
+                        --agent-uuid="${AGENT_UUID}" \
+                        --agent-password="${AGENT_PASSWORD}" \
+                        --log-file="/log_file_path/build.log" \
+                        --pipeline-system="Jenkins" \
+                        --job-name="${JOB_NAME}" \
+                        --build-number="${BUILD_NUMBER}" \
+                        --build-status="${LINEAI_BUILD_STATUS}"
+                '''
+            }
+
             // Clean out the workspace
             cleanWs()
         }
