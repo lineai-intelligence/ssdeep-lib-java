@@ -79,7 +79,8 @@ pipeline {
             }
             steps {
                 // lineai-intelligence-build-feedback: tee build/test output so it can be sent to Lineai in post{always}
-                sh('''
+                // Jenkins `sh` is dash; pipefail needs bash.
+                sh('''#!/bin/bash
                     set -o pipefail
                     export NO_COLOR=1 TERM=dumb
                     docker pull "${DOCKER_MAVEN}"
