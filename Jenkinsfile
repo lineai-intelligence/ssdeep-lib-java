@@ -39,7 +39,7 @@ pipeline {
         stage('Check Branch') {
             when {
                 not {
-                    expression { BRANCH_NAME ==~ /(integration|qa|master|feature\/.*|lineai\/.*)/ }
+                    expression { BRANCH_NAME ==~ /(integration|master|feature\/.*|lineai\/.*)/ }
                 }
             }
             steps {
@@ -75,7 +75,7 @@ pipeline {
 
         stage('Build Branch and Run UTs') {
             when {
-                expression { BRANCH_NAME ==~ /(integration|qa|master|feature\/.*|lineai\/.*)/ }
+                expression { BRANCH_NAME ==~ /(integration|master|feature\/.*|lineai\/.*)/ }
             }
             steps {
                 // lineai-intelligence-build-feedback: tee build/test output so it can be sent to Lineai in post{always}
@@ -107,7 +107,7 @@ pipeline {
 
         stage('Record Test Results') {
             when {
-                expression { BRANCH_NAME ==~ /(integration|qa|master|feature\/.*|lineai\/.*)/ }
+                expression { BRANCH_NAME ==~ /(integration|master|feature\/.*|lineai\/.*)/ }
             }
             steps {
                 // Publish SpotBugs analysis results
@@ -125,7 +125,7 @@ pipeline {
 
         stage('Publish Artifacts') {
             when {
-                expression { BRANCH_NAME ==~ /(qa|master)/ }
+                expression { BRANCH_NAME ==~ /master/ }
             }
             steps {
                 sh('''
@@ -151,23 +151,13 @@ pipeline {
             }
         }
 
-        stage('Merge to QA') {
-            // Only merge Integration into QA if we're in the integration branch and all Unit Tests have passed...
+        stage('Merge to Master') {
+            // Only merge Integration into Master if we're on integration and all Unit Tests have passed...
             when {
                 branch 'integration'
             }
             steps {
-                mergeBranch("integration", "qa")
-            }
-        }
-
-        stage('Merge QA to Master') {
-            // Only merge QA into Master if we're in the QA branch and all Unit and Integration Tests have passed...
-            when {
-                branch 'qa'
-            }
-            steps {
-                mergeBranch("qa", "master")
+                mergeBranch("integration", "master")
             }
         }
 
