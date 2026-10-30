@@ -24,7 +24,7 @@
         <junit.version>4.13.2</junit.version>
         <slf4j.version>2.0.17</slf4j.version>
         <apache.commons.version>3.17.0</apache.commons.version>
-        <maven.dependency-check.plugin.version>12.1.0</maven.dependency-check.plugin.version>
+        <maven.dependency-check.plugin.version>13.0.0</maven.dependency-check.plugin.version>
         <skipDependencyCheck>true</skipDependencyCheck>
     </properties>
 
