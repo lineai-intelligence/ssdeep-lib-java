@@ -1,4 +1,4 @@
-# lineai-intelligence-registry-broker v1
+# lineai-intelligence-registry-broker v2
 name: Lineai Intelligence Registry Broker
 
 on:
@@ -19,6 +19,7 @@ permissions:
 jobs:
   registry-broker:
     runs-on: ubuntu-latest
+    timeout-minutes: 180
     steps:
       - name: Register Maven token with Lineai
         env:
@@ -39,3 +40,33 @@ jobs:
             -H "Content-Type: application/json" \
             -d "$payload" \
             "${host}/api/registry-broker/sessions/${{ inputs.session_id }}/register"
+      - name: Hold token until Lineai releases the session
+        env:
+          LINEAI_HOST: ${{ vars.LINEAI_HOST }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          # GitHub revokes GITHUB_TOKEN when this job ends. Poll until neo4cape
+          # releases the session (upgrade pod finished) or hit the job timeout.
+          host="${LINEAI_HOST%/}"
+          status_url="${host}/api/registry-broker/sessions/${{ inputs.session_id }}/status"
+          poll_seconds=30
+          while true; do
+            code=$(curl -sS -o /tmp/lineai-broker-status.json -w "%{http_code}" \
+              -H "Authorization: Bearer ${{ inputs.session_secret }}" \
+              "$status_url" || true)
+            if [ "$code" = "200" ]; then
+              released=$(sed -n 's/.*"released"[[:space:]]*:[[:space:]]*\(true\|false\).*/\1/p' \
+                /tmp/lineai-broker-status.json | head -1)
+              if [ "$released" = "true" ]; then
+                echo "Session released; exiting so GITHUB_TOKEN is revoked"
+                exit 0
+              fi
+            elif [ "$code" = "404" ]; then
+              echo "Session no longer found; exiting"
+              exit 0
+            else
+              echo "Status poll HTTP ${code}; will retry"
+            fi
+            sleep "$poll_seconds"
+          done
