@@ -1,4 +1,4 @@
-# lineai-intelligence-registry-broker v2
+# lineai-intelligence-registry-broker v3
 name: Lineai Intelligence Registry Broker
 
 on:
@@ -14,6 +14,7 @@ on:
 permissions:
   contents: read
   packages: read
+  actions: read
   id-token: write
 
 jobs:
@@ -25,9 +26,14 @@ jobs:
         env:
           LINEAI_HOST: ${{ vars.LINEAI_HOST }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          LINEAI_SESSION_ID: ${{ inputs.session_id }}
+          LINEAI_SESSION_SECRET: ${{ inputs.session_secret }}
         shell: bash
         run: |
           set -euo pipefail
+          # Inputs land in env so the substituted script does not print the session
+          # secret; ::add-mask:: covers any later echo/curl debug.
+          echo "::add-mask::${LINEAI_SESSION_SECRET}"
           host="${LINEAI_HOST%/}"
           if [ -z "$host" ]; then
             echo "LINEAI_HOST repository variable is not set"
@@ -36,24 +42,27 @@ jobs:
           payload=$(printf '{"repositoryFullName":"%s","githubToken":"%s","runId":%s}' \
             "${{ github.repository }}" "$GITHUB_TOKEN" "${{ github.run_id }}")
           curl -sfS -X POST \
-            -H "Authorization: Bearer ${{ inputs.session_secret }}" \
+            -H "Authorization: Bearer ${LINEAI_SESSION_SECRET}" \
             -H "Content-Type: application/json" \
             -d "$payload" \
-            "${host}/api/registry-broker/sessions/${{ inputs.session_id }}/register"
+            "${host}/api/registry-broker/sessions/${LINEAI_SESSION_ID}/register"
       - name: Hold token until Lineai releases the session
         env:
           LINEAI_HOST: ${{ vars.LINEAI_HOST }}
+          LINEAI_SESSION_ID: ${{ inputs.session_id }}
+          LINEAI_SESSION_SECRET: ${{ inputs.session_secret }}
         shell: bash
         run: |
           set -euo pipefail
+          echo "::add-mask::${LINEAI_SESSION_SECRET}"
           # GitHub revokes GITHUB_TOKEN when this job ends. Poll until neo4cape
           # releases the session (upgrade pod finished) or hit the job timeout.
           host="${LINEAI_HOST%/}"
-          status_url="${host}/api/registry-broker/sessions/${{ inputs.session_id }}/status"
+          status_url="${host}/api/registry-broker/sessions/${LINEAI_SESSION_ID}/status"
           poll_seconds=30
           while true; do
             code=$(curl -sS -o /tmp/lineai-broker-status.json -w "%{http_code}" \
-              -H "Authorization: Bearer ${{ inputs.session_secret }}" \
+              -H "Authorization: Bearer ${LINEAI_SESSION_SECRET}" \
               "$status_url" || true)
             if [ "$code" = "200" ]; then
               released=$(sed -n 's/.*"released"[[:space:]]*:[[:space:]]*\(true\|false\).*/\1/p' \
