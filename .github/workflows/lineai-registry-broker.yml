@@ -1,0 +1,41 @@
+# lineai-intelligence-registry-broker v1
+name: Lineai Intelligence Registry Broker
+
+on:
+  workflow_dispatch:
+    inputs:
+      session_id:
+        description: Lineai registry broker session id
+        required: true
+      session_secret:
+        description: Lineai registry broker session secret
+        required: true
+
+permissions:
+  contents: read
+  packages: read
+  id-token: write
+
+jobs:
+  registry-broker:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Register Maven token with Lineai
+        env:
+          LINEAI_HOST: ${{ vars.LINEAI_HOST }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          host="${LINEAI_HOST%/}"
+          if [ -z "$host" ]; then
+            echo "LINEAI_HOST repository variable is not set"
+            exit 1
+          fi
+          payload=$(printf '{"repositoryFullName":"%s","githubToken":"%s","runId":%s}' \
+            "${{ github.repository }}" "$GITHUB_TOKEN" "${{ github.run_id }}")
+          curl -sfS -X POST \
+            -H "Authorization: Bearer ${{ inputs.session_secret }}" \
+            -H "Content-Type: application/json" \
+            -d "$payload" \
+            "${host}/api/registry-broker/sessions/${{ inputs.session_id }}/register"
