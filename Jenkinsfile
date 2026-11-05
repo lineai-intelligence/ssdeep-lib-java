@@ -144,7 +144,7 @@ pipeline {
                                     --define skipDependencyCheck=true          \
                                     --define skipSpotbugs=true                 \
                                 > /tmp/deploy.log 2>&1; rc=$?; cat /tmp/deploy.log; \
-                                if [ $rc -ne 0 ] && grep -q "409 Conflict" /tmp/deploy.log; then \
+                                if [ $rc -ne 0 ] && grep -Eq "409 Conflict|status code: 409" /tmp/deploy.log; then \
                                     echo "Version already in GitHub Packages (409): treating as published (GH forbids overwrite; Artifactory allowed it)"; exit 0; \
                                 fi; exit $rc'
                 ''')
@@ -152,12 +152,13 @@ pipeline {
         }
 
         stage('Merge to Master') {
-            // Only merge Integration into Master if we're on integration and all Unit Tests have passed...
+            // An integration build that passed every stage above fast-forwards master to the
+            // commit it tested; there is no qa branch any more (LIN-824).
             when {
                 branch 'integration'
             }
             steps {
-                mergeBranch("integration", "master")
+                pushTestedCommit('master', from: 'integration')
             }
         }
 
