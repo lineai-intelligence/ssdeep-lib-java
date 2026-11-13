@@ -206,7 +206,10 @@ pipeline {
         stage('Lineai Source Scan') {
             // lineai-intelligence-source-scan — same org-wide credentials as build feedback
             when {
-                expression { BRANCH_NAME ==~ /(integration|lineai\/.*)/ }
+                allOf {
+                    branch 'integration'
+                    not { changeRequest() }
+                }
             }
             steps {
                 catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
